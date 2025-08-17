@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Union, Dict, List, Any
 import flatten_json
 import re
+from datetime import datetime
+import yaml
 
 # Color codes for terminal output
 class Colors:
@@ -292,6 +294,294 @@ def analyze_structure(data: Any, indent: int = 0, color_enabled: bool = True) ->
         print(colorize(f"{prefix}Value: ", Colors.BLUE, color_enabled) + 
               colorize(f"{type(data).__name__}", Colors.CYAN, color_enabled))
 
+def detect_field_pattern(value: Any) -> dict:
+    """Detect patterns and characteristics of a field value."""
+    if value is None:
+        return {"type": "null", "description": "Null value"}
+    
+    value_str = str(value)
+    
+    # Date patterns
+    if isinstance(value, str):
+        # MM/DD/YYYY HH:MM:SS
+        if re.match(r'^\d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}:\d{2}$', value_str):
+            return {
+                "type": "string",
+                "format": "datetime",
+                "pattern": r'^\d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}:\d{2}$',
+                "description": "Date and time in MM/DD/YYYY HH:MM:SS format",
+                "example": value_str
+            }
+        # MM/DD/YYYY
+        elif re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', value_str):
+            return {
+                "type": "string",
+                "format": "date",
+                "pattern": r'^\d{1,2}/\d{1,2}/\d{4}$',
+                "description": "Date in MM/DD/YYYY format",
+                "example": value_str
+            }
+        # Email pattern
+        elif re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', value_str):
+            return {
+                "type": "string",
+                "format": "email",
+                "pattern": r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                "description": "Email address",
+                "example": value_str
+            }
+        # ID/Key patterns (uppercase letters, numbers, hyphens, underscores)
+        elif re.match(r'^[A-Z0-9_-]+$', value_str):
+            return {
+                "type": "string",
+                "pattern": r'^[A-Z0-9_-]+$',
+                "description": "Identifier or key",
+                "example": value_str
+            }
+        # Numeric string
+        elif re.match(r'^[0-9]+$', value_str):
+            return {
+                "type": "string",
+                "pattern": r'^[0-9]+$',
+                "description": "Numeric string",
+                "example": value_str
+            }
+        # Empty string
+        elif value_str == "":
+            return {
+                "type": "string",
+                "description": "Empty string",
+                "example": ""
+            }
+        # General string
+        else:
+            return {
+                "type": "string",
+                "description": "Text string",
+                "example": value_str[:50] + "..." if len(value_str) > 50 else value_str
+            }
+    
+    # Number types
+    elif isinstance(value, (int, float)):
+        if isinstance(value, int):
+            return {
+                "type": "integer",
+                "description": "Integer number",
+                "example": value
+            }
+        else:
+            return {
+                "type": "number",
+                "description": "Decimal number",
+                "example": value
+            }
+    
+    # Boolean
+    elif isinstance(value, bool):
+        return {
+            "type": "boolean",
+            "description": "Boolean value",
+            "example": value
+        }
+    
+    # Default
+    else:
+        return {
+            "type": str(type(value).__name__),
+            "description": f"{type(value).__name__} value",
+            "example": value_str
+        }
+
+def analyze_field_statistics(values: list) -> dict:
+    """Analyze statistics for a field across multiple values."""
+    if not values:
+        return {}
+    
+    # Remove None values for analysis
+    non_null_values = [v for v in values if v is not None]
+    
+    stats = {
+        "total_count": len(values),
+        "null_count": len(values) - len(non_null_values),
+        "null_rate": (len(values) - len(non_null_values)) / len(values) if values else 0
+    }
+    
+    if non_null_values:
+        # Type analysis
+        types = set(type(v).__name__ for v in non_null_values)
+        stats["types"] = list(types)
+        
+        # Value analysis
+        if all(isinstance(v, (int, float)) for v in non_null_values):
+            stats["min"] = min(non_null_values)
+            stats["max"] = max(non_null_values)
+            stats["avg"] = sum(non_null_values) / len(non_null_values)
+        
+        # String analysis
+        if all(isinstance(v, str) for v in non_null_values):
+            stats["min_length"] = min(len(v) for v in non_null_values)
+            stats["max_length"] = max(len(v) for v in non_null_values)
+            stats["avg_length"] = sum(len(v) for v in non_null_values) / len(non_null_values)
+            
+            # Check for unique values
+            unique_values = set(non_null_values)
+            stats["unique_count"] = len(unique_values)
+            stats["uniqueness_rate"] = len(unique_values) / len(non_null_values)
+            
+            # Most common values
+            from collections import Counter
+            value_counts = Counter(non_null_values)
+            stats["most_common"] = value_counts.most_common(3)
+    
+    return stats
+
+def generate_schema(data: Any, field_name: str = "root", detailed: bool = False) -> dict:
+    """Generate JSON schema from data."""
+    if isinstance(data, dict):
+        schema = {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+        
+        for key, value in data.items():
+            if value is not None:
+                schema["properties"][key] = generate_schema(value, key, detailed)
+                # Consider field required if it's not None in this sample
+                schema["required"].append(key)
+        
+        return schema
+    
+    elif isinstance(data, list):
+        if not data:
+            return {
+                "type": "array",
+                "description": "Empty array",
+                "items": {}
+            }
+        
+        # Determine the schema for array items
+        if all(isinstance(item, dict) for item in data):
+            # Array of objects - merge schemas
+            merged_schema = {"type": "object", "properties": {}, "required": []}
+            
+            # Collect all unique keys
+            all_keys = set()
+            for item in data:
+                all_keys.update(item.keys())
+            
+            # Analyze each field across all items
+            for key in all_keys:
+                field_values = [item.get(key) for item in data]
+                field_stats = analyze_field_statistics(field_values)
+                
+                # Get sample value for pattern detection
+                sample_value = next((v for v in field_values if v is not None), None)
+                if sample_value is not None:
+                    pattern_info = detect_field_pattern(sample_value)
+                    
+                    merged_schema["properties"][key] = pattern_info.copy()
+                    
+                    if detailed:
+                        merged_schema["properties"][key].update({
+                            "statistics": field_stats
+                        })
+                    
+                    # Consider required if not null in most cases
+                    if field_stats.get("null_rate", 0) < 0.5:
+                        merged_schema["required"].append(key)
+            
+            return {
+                "type": "array",
+                "description": f"Array of {len(data)} objects",
+                "items": merged_schema
+            }
+        else:
+            # Array of simple values
+            sample_value = data[0] if data else None
+            if sample_value is not None:
+                pattern_info = detect_field_pattern(sample_value)
+                return {
+                    "type": "array",
+                    "description": f"Array of {len(data)} items",
+                    "items": pattern_info
+                }
+            else:
+                return {
+                    "type": "array",
+                    "description": "Array of items",
+                    "items": {"type": "string"}
+                }
+    
+    else:
+        # Simple value
+        return detect_field_pattern(data)
+
+def display_schema(schema: dict, color_enabled: bool = True, detailed: bool = False) -> None:
+    """Display schema in a readable format."""
+    print(colorize("\n📋 JSON Schema Analysis", Colors.HEADER, color_enabled))
+    print(colorize("=" * 60, Colors.BOLD, color_enabled))
+    
+    def display_schema_recursive(schema_part: dict, indent: int = 0, name: str = "root"):
+        prefix = "  " * indent
+        
+        if schema_part.get("type") == "object":
+            print(colorize(f"{prefix}📁 {name}: object", Colors.BOLD, color_enabled))
+            if "properties" in schema_part:
+                for prop_name, prop_schema in schema_part["properties"].items():
+                    display_schema_recursive(prop_schema, indent + 1, prop_name)
+        elif schema_part.get("type") == "array":
+            print(colorize(f"{prefix}📋 {name}: array", Colors.YELLOW, color_enabled))
+            if "items" in schema_part:
+                display_schema_recursive(schema_part["items"], indent + 1, "item")
+        else:
+            # Simple type
+            type_icon = "🔤" if schema_part.get("type") == "string" else "🔢" if schema_part.get("type") in ["integer", "number"] else "✅" if schema_part.get("type") == "boolean" else "❓"
+            print(colorize(f"{prefix}{type_icon} {name}: {schema_part.get('type', 'unknown')}", Colors.CYAN, color_enabled))
+            
+            if "description" in schema_part:
+                print(colorize(f"{prefix}   📝 {schema_part['description']}", Colors.BLUE, color_enabled))
+            
+            if "example" in schema_part:
+                print(colorize(f"{prefix}   💡 Example: {schema_part['example']}", Colors.GREEN, color_enabled))
+            
+            if detailed and "statistics" in schema_part:
+                stats = schema_part["statistics"]
+                if "null_rate" in stats:
+                    null_percent = stats["null_rate"] * 100
+                    print(colorize(f"{prefix}   📊 Null rate: {null_percent:.1f}%", Colors.YELLOW, color_enabled))
+                
+                if "unique_count" in stats:
+                    print(colorize(f"{prefix}   🔑 Unique values: {stats['unique_count']}", Colors.CYAN, color_enabled))
+    
+    display_schema_recursive(schema)
+    print(colorize("=" * 60, Colors.BOLD, color_enabled))
+
+def save_schema_to_file(schema: dict, output_path: str, format_type: str = "json") -> None:
+    """Save schema to file in specified format."""
+    try:
+        if format_type == "json":
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(schema, f, indent=2, ensure_ascii=False)
+        elif format_type == "yaml":
+            with open(output_path, 'w', encoding='utf-8') as f:
+                yaml.dump(schema, f, default_flow_style=False, allow_unicode=True)
+        elif format_type == "md":
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write("# JSON Schema Documentation\n\n")
+                f.write("## Schema Definition\n\n")
+                f.write("```json\n")
+                f.write(json.dumps(schema, indent=2))
+                f.write("\n```\n\n")
+                f.write("## Field Descriptions\n\n")
+                # Add field descriptions here
+        else:
+            raise ValueError(f"Unsupported format: {format_type}")
+        
+        print(f"Schema saved to: {output_path}")
+    except Exception as e:
+        print(f"Error saving schema: {e}")
+
 def main():
     parser = argparse.ArgumentParser(description="Convert JSON files to tabular format")
     parser.add_argument("json_file", help="Path to the JSON file")
@@ -310,6 +600,11 @@ def main():
                        help="Enable colored output (default: auto-detect)")
     parser.add_argument("--no-color", action="store_true",
                        help="Disable colored output")
+    parser.add_argument("--schema", action="store_true",
+                       help="Generate and display JSON schema")
+    parser.add_argument("--schema-detailed", action="store_true",
+                       help="Generate detailed schema with statistics")
+    parser.add_argument("--output-schema", help="Save schema to file (specify format: .json, .yaml, .md)")
 
     args = parser.parse_args()
 
@@ -322,6 +617,34 @@ def main():
     print(f"Loading JSON file: {args.json_file}")
     data = load_json_file(args.json_file)
 
+    # Determine color setting
+    if args.color:
+        color_enabled = True
+    elif args.no_color:
+        color_enabled = False
+    else:
+        color_enabled = is_color_supported()  # Auto-detect
+
+    # Generate schema if requested
+    if args.schema or args.schema_detailed:
+        detailed = args.schema_detailed
+        print(colorize("Generating JSON schema...", Colors.HEADER, color_enabled))
+        schema = generate_schema(data, detailed=detailed)
+        display_schema(schema, color_enabled, detailed)
+        
+        # Save schema to file if requested
+        if args.output_schema:
+            output_path = args.output_schema
+            # Determine format from file extension
+            if output_path.endswith('.yaml') or output_path.endswith('.yml'):
+                format_type = "yaml"
+            elif output_path.endswith('.md'):
+                format_type = "md"
+            else:
+                format_type = "json"
+            
+            save_schema_to_file(schema, output_path, format_type)
+
     # Show structure analysis if requested
     if args.structure:
         print(colorize("\nJSON Structure Analysis:", Colors.HEADER, color_enabled))
@@ -332,14 +655,6 @@ def main():
     # Convert to DataFrame
     print("Converting to tabular format...")
     df = json_to_dataframe(data)
-
-    # Determine color setting
-    if args.color:
-        color_enabled = True
-    elif args.no_color:
-        color_enabled = False
-    else:
-        color_enabled = is_color_supported()  # Auto-detect
     
     # Display table
     table_format = "plain" if args.ascii else args.format
@@ -423,6 +738,11 @@ def example_usage():
     print("\nStructure Analysis:")
     analyze_structure(sample_data, color_enabled=True)
 
+    # Show schema generation
+    print("\nSchema Generation:")
+    schema = generate_schema(sample_data, detailed=True)
+    display_schema(schema, color_enabled=True, detailed=True)
+
 if __name__ == "__main__":
     # Check if running with command line arguments
     if len(sys.argv) > 1:
@@ -436,6 +756,9 @@ if __name__ == "__main__":
         print("  --hierarchical     Display JSON in hierarchical format with nested tables")
         print("  --color            Enable colored output")
         print("  --no-color         Disable colored output")
+        print("  --schema           Generate and display JSON schema")
+        print("  --schema-detailed  Generate detailed schema with statistics")
+        print("  --output-schema    Save schema to file (.json, .yaml, .md)")
         print("  -o, --output       Output CSV file path")
         print("  -w, --width        Maximum column width for display")
         print("  -s, --structure    Show JSON structure analysis")

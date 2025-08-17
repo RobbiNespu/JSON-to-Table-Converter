@@ -7,6 +7,7 @@ A powerful Python script that converts JSON files into tabular format and displa
 - **Multiple Table Formats**: Support for grid, plain, simple, github, and fancy_grid table styles
 - **ASCII Output**: Clean ASCII table format for maximum compatibility
 - **Color Output**: Beautiful colored output with syntax highlighting for better readability
+- **Schema Generation**: Automatically generate comprehensive JSON schemas with data type detection
 - **Hierarchical Display**: Show JSON structure with nested tables and proper indentation
 - **Nested JSON Handling**: Automatically flattens complex nested JSON structures
 - **CSV Export**: Save converted data to CSV files
@@ -52,6 +53,9 @@ python json_converter.py <json_file>
 | `--hierarchical` | Display JSON in hierarchical format with nested tables | False |
 | `--color` | Enable colored output | Auto-detect |
 | `--no-color` | Disable colored output | False |
+| `--schema` | Generate and display JSON schema | False |
+| `--schema-detailed` | Generate detailed schema with statistics | False |
+| `--output-schema` | Save schema to file (.json, .yaml, .md) | None |
 | `-o, --output` | Output CSV file path | None |
 | `-w, --width` | Maximum column width for display | 50 |
 | `-s, --structure` | Show JSON structure analysis | False |
@@ -128,6 +132,31 @@ python json_converter.py data.json --hierarchical -a -w 80 -o output.csv
 python json_converter.py data.json --hierarchical --color
 ```
 
+#### Generate JSON schema
+```bash
+python json_converter.py data.json --schema
+```
+
+#### Generate detailed schema with statistics
+```bash
+python json_converter.py data.json --schema-detailed
+```
+
+#### Save schema to JSON file
+```bash
+python json_converter.py data.json --schema --output-schema schema.json
+```
+
+#### Save schema to YAML file
+```bash
+python json_converter.py data.json --schema --output-schema schema.yaml
+```
+
+#### Save schema to Markdown file
+```bash
+python json_converter.py data.json --schema --output-schema schema.md
+```
+
 ## Table Formats
 
 The script supports several table formats:
@@ -157,6 +186,110 @@ The converter includes intelligent color highlighting to improve readability:
 - **Manual control**: Use `--color` to force enable or `--no-color` to disable
 - **Table enhancement**: Headers and data cells are colorized for better readability
 - **Hierarchical display**: Tree structure elements are color-coded by type
+
+## Schema Generation
+
+The converter includes intelligent schema generation that automatically analyzes your JSON data and creates comprehensive schema definitions:
+
+### Schema Features
+- **Automatic Type Detection**: Identifies data types (string, integer, boolean, object, array)
+- **Pattern Recognition**: Detects date formats, email addresses, IDs, and numeric patterns
+- **Statistical Analysis**: Provides null rates, uniqueness, and value distributions
+- **Required Field Detection**: Identifies mandatory fields based on data presence
+- **Multiple Output Formats**: Export schemas as JSON, YAML, or Markdown
+
+### Pattern Detection
+The schema generator recognizes common data patterns:
+- **📅 Dates**: MM/DD/YYYY and MM/DD/YYYY HH:MM:SS formats
+- **📧 Emails**: Standard email address patterns
+- **🔑 IDs/Keys**: Uppercase alphanumeric identifiers
+- **🔢 Numbers**: Integer and decimal number formats
+- **📝 Strings**: Text with length analysis
+
+### Schema Output Example
+```
+📋 JSON Schema Analysis
+============================================================
+📁 root: object
+  🔤 Type: string
+     📝 Document type identifier
+     💡 Example: IR
+  📋 WODetail: array
+    📁 item: object
+      🔢 QtyReceived: integer
+         📝 Quantity received
+         💡 Example: 10
+         📊 Null rate: 0.0%
+      🔤 StorerKey: string
+         📝 Identifier or key
+         💡 Example: CUSTOMER
+         🔑 Unique values: 1
+      🔤 Sku: string
+         📝 Numeric string
+         💡 Example: 978129244860
+  📁 POIR: object
+    🔢 Suer2: integer
+       📝 Integer number
+       💡 Example: 0
+    🔤 ReceiptKey: string
+       📝 Numeric string
+       💡 Example: 000001675
+    🔤 ReceiptDate: string
+       📝 Date and time in MM/DD/YYYY HH:MM:SS format
+       💡 Example: 11/18/2022 14:37:31
+============================================================
+```
+
+### Schema Export Formats
+
+#### JSON Schema Format
+```json
+{
+  "type": "object",
+  "properties": {
+    "Type": {
+      "type": "string",
+      "description": "Document type identifier",
+      "example": "IR"
+    },
+    "WODetail": {
+      "type": "array",
+      "description": "Array of 2 objects",
+      "items": {
+        "type": "object",
+        "properties": {
+          "QtyReceived": {
+            "type": "integer",
+            "description": "Quantity received",
+            "example": 10
+          }
+        },
+        "required": ["QtyReceived", "StorerKey", "Sku"]
+      }
+    }
+  }
+}
+```
+
+#### YAML Format
+```yaml
+type: object
+properties:
+  Type:
+    type: string
+    description: Document type identifier
+    example: IR
+  WODetail:
+    type: array
+    description: Array of 2 objects
+    items:
+      type: object
+      properties:
+        QtyReceived:
+          type: integer
+          description: Quantity received
+          example: 10
+```
 
 ## JSON Structure Support
 
