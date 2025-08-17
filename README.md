@@ -382,12 +382,3 @@ If you encounter any issues or have questions:
 3. Ensure all dependencies are installed
 4. Try using the `-s` flag to analyze your JSON structure
 
-## Changelog
-
-### Version 1.0.0
-- Initial release
-- Basic JSON to table conversion
-- Multiple table format support
-- ASCII output option
-- CSV export functionality
-- JSON structure analysis
