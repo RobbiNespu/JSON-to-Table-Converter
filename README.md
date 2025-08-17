@@ -6,6 +6,7 @@ A powerful Python script that converts JSON files into tabular format and displa
 
 - **Multiple Table Formats**: Support for grid, plain, simple, github, and fancy_grid table styles
 - **ASCII Output**: Clean ASCII table format for maximum compatibility
+- **Color Output**: Beautiful colored output with syntax highlighting for better readability
 - **Hierarchical Display**: Show JSON structure with nested tables and proper indentation
 - **Nested JSON Handling**: Automatically flattens complex nested JSON structures
 - **CSV Export**: Save converted data to CSV files
@@ -49,6 +50,8 @@ python json_converter.py <json_file>
 | `-f, --format` | Table format (grid, plain, simple, github, fancy_grid) | grid |
 | `-a, --ascii` | Output table in ASCII format | False |
 | `--hierarchical` | Display JSON in hierarchical format with nested tables | False |
+| `--color` | Enable colored output | Auto-detect |
+| `--no-color` | Disable colored output | False |
 | `-o, --output` | Output CSV file path | None |
 | `-w, --width` | Maximum column width for display | 50 |
 | `-s, --structure` | Show JSON structure analysis | False |
@@ -100,6 +103,16 @@ python json_converter.py data.json --hierarchical -w 80
 python json_converter.py data.json --hierarchical -f simple
 ```
 
+#### Enable colored output
+```bash
+python json_converter.py data.json --color
+```
+
+#### Disable colored output
+```bash
+python json_converter.py data.json --no-color
+```
+
 #### Combine multiple options
 ```bash
 python json_converter.py data.json -a -w 80 -o output.csv -s
@@ -108,6 +121,11 @@ python json_converter.py data.json -a -w 80 -o output.csv -s
 #### Hierarchical display with multiple options
 ```bash
 python json_converter.py data.json --hierarchical -a -w 80 -o output.csv
+```
+
+#### Colored hierarchical display
+```bash
+python json_converter.py data.json --hierarchical --color
 ```
 
 ## Table Formats
@@ -119,6 +137,26 @@ The script supports several table formats:
 - **simple**: Clean format with minimal styling
 - **github**: GitHub-style markdown table format
 - **fancy_grid**: Enhanced grid format with better styling
+
+## Color Output
+
+The converter includes intelligent color highlighting to improve readability:
+
+### Color Scheme
+- **🔵 Blue**: Regular strings and text
+- **🟢 Green**: Keys, IDs, and identifiers
+- **🟡 Yellow**: Dates and timestamps
+- **🔴 Red**: Empty values (null, empty strings)
+- **🟣 Purple**: Headers and section titles
+- **⚪ Cyan**: Numbers and counts
+- **⚫ Bold**: Important structural elements
+
+### Color Features
+- **Auto-detection**: Automatically detects if your terminal supports colors
+- **Smart highlighting**: Different data types are highlighted with appropriate colors
+- **Manual control**: Use `--color` to force enable or `--no-color` to disable
+- **Table enhancement**: Headers and data cells are colorized for better readability
+- **Hierarchical display**: Tree structure elements are color-coded by type
 
 ## JSON Structure Support
 

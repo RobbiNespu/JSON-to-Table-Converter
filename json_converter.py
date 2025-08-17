@@ -12,6 +12,96 @@ import sys
 from pathlib import Path
 from typing import Union, Dict, List, Any
 import flatten_json
+import re
+
+# Color codes for terminal output
+class Colors:
+    """ANSI color codes for terminal output."""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+    
+    # Background colors
+    BG_BLUE = '\033[44m'
+    BG_GREEN = '\033[42m'
+    BG_YELLOW = '\033[43m'
+    BG_RED = '\033[41m'
+    BG_GRAY = '\033[100m'
+
+def is_color_supported() -> bool:
+    """Check if terminal supports color output."""
+    import os
+    return hasattr(sys.stdout, 'isatty') and sys.stdout.isatty() and os.environ.get('TERM') != 'dumb'
+
+def colorize(text: str, color: str, enabled: bool = True) -> str:
+    """Add color to text if color output is enabled."""
+    if not enabled or not is_color_supported():
+        return text
+    return f"{color}{text}{Colors.END}"
+
+def highlight_value(value: Any, enabled: bool = True) -> str:
+    """Highlight different types of values with colors."""
+    if not enabled:
+        return str(value)
+    
+    value_str = str(value)
+    
+    # Numbers
+    if isinstance(value, (int, float)):
+        return colorize(value_str, Colors.CYAN)
+    
+    # Strings that look like dates
+    if isinstance(value, str) and re.match(r'\d{1,2}/\d{1,2}/\d{4}', value_str):
+        return colorize(value_str, Colors.YELLOW)
+    
+    # Strings that look like keys/IDs
+    if isinstance(value, str) and re.match(r'^[A-Z0-9_-]+$', value_str):
+        return colorize(value_str, Colors.GREEN)
+    
+    # Empty values
+    if value_str in ['', 'null', 'None']:
+        return colorize(value_str, Colors.RED)
+    
+    # Default string color
+    return colorize(value_str, Colors.BLUE)
+
+def colorize_table(table_str: str, enabled: bool = True) -> str:
+    """Add colors to table output."""
+    if not enabled:
+        return table_str
+    
+    lines = table_str.split('\n')
+    colored_lines = []
+    
+    for i, line in enumerate(lines):
+        if i == 0:  # Header
+            colored_lines.append(colorize(line, Colors.BOLD + Colors.BG_GRAY))
+        elif '|' in line and not line.startswith('+') and not line.startswith('='):
+            # Data rows - colorize values
+            parts = line.split('|')
+            colored_parts = []
+            for j, part in enumerate(parts):
+                if j == 0:  # Index column
+                    colored_parts.append(colorize(part.strip(), Colors.YELLOW))
+                else:
+                    # Try to extract and colorize the value
+                    value = part.strip()
+                    if value and not value.startswith('-'):
+                        colored_parts.append(highlight_value(value))
+                    else:
+                        colored_parts.append(part)
+            colored_lines.append('|'.join(colored_parts))
+        else:
+            # Separator lines
+            colored_lines.append(colorize(line, Colors.GRAY if hasattr(Colors, 'GRAY') else ''))
+    
+    return '\n'.join(colored_lines)
 
 def load_json_file(file_path: str) -> Union[Dict, List]:
     """Load and parse JSON file."""
@@ -78,10 +168,10 @@ def json_to_dataframe(data: Union[Dict, List]) -> pd.DataFrame:
         # Simple value
         return pd.DataFrame([{"Value": data}])
 
-def display_table(df: pd.DataFrame, table_format: str = "grid", max_width: int = 100) -> None:
+def display_table(df: pd.DataFrame, table_format: str = "grid", max_width: int = 100, color_enabled: bool = True) -> None:
     """Display DataFrame as a formatted table."""
     if df.empty:
-        print("No data to display.")
+        print(colorize("No data to display.", Colors.RED, color_enabled))
         return
 
     # Truncate long strings for better display
@@ -93,29 +183,38 @@ def display_table(df: pd.DataFrame, table_format: str = "grid", max_width: int =
             )
 
     # Display table
-    print(f"\nTable ({len(df)} rows, {len(df.columns)} columns):")
-    print("=" * 50)
-    print(tabulate(df_display, headers='keys', tablefmt=table_format, showindex=True))
-    print("=" * 50)
+    table_info = f"\nTable ({len(df)} rows, {len(df.columns)} columns):"
+    print(colorize(table_info, Colors.HEADER, color_enabled))
+    print(colorize("=" * 50, Colors.BOLD, color_enabled))
+    
+    table_str = tabulate(df_display, headers='keys', tablefmt=table_format, showindex=True)
+    if color_enabled and table_format in ["plain", "simple"]:
+        table_str = colorize_table(table_str, color_enabled)
+    
+    print(table_str)
+    print(colorize("=" * 50, Colors.BOLD, color_enabled))
 
-def display_hierarchical_table(data: Any, table_format: str = "grid", max_width: int = 100, indent: int = 0) -> None:
+def display_hierarchical_table(data: Any, table_format: str = "grid", max_width: int = 100, indent: int = 0, color_enabled: bool = True) -> None:
     """Display JSON data in a hierarchical table format similar to the image."""
     prefix = "  " * indent
     
     if isinstance(data, dict):
-        print(f"{prefix}┌─ Object ({len(data)} keys)")
+        print(colorize(f"{prefix}┌─ Object ({len(data)} keys)", Colors.BOLD, color_enabled))
         for i, (key, value) in enumerate(data.items()):
             is_last = i == len(data) - 1
             connector = "└─" if is_last else "├─"
             
             if isinstance(value, dict):
-                print(f"{prefix}{connector} {key}: Object ({len(value)} keys)")
-                display_hierarchical_table(value, table_format, max_width, indent + 2)
+                print(colorize(f"{prefix}{connector} {key}: ", Colors.GREEN, color_enabled) + 
+                      colorize(f"Object ({len(value)} keys)", Colors.CYAN, color_enabled))
+                display_hierarchical_table(value, table_format, max_width, indent + 2, color_enabled)
             elif isinstance(value, list):
-                print(f"{prefix}{connector} {key}: Array ({len(value)} items)")
-                display_hierarchical_table(value, table_format, max_width, indent + 2)
+                print(colorize(f"{prefix}{connector} {key}: ", Colors.GREEN, color_enabled) + 
+                      colorize(f"Array ({len(value)} items)", Colors.YELLOW, color_enabled))
+                display_hierarchical_table(value, table_format, max_width, indent + 2, color_enabled)
             else:
-                print(f"{prefix}{connector} {key}: {value}")
+                print(colorize(f"{prefix}{connector} {key}: ", Colors.GREEN, color_enabled) + 
+                      highlight_value(value, color_enabled))
                 
     elif isinstance(data, list):
         if data and isinstance(data[0], dict):
@@ -133,27 +232,33 @@ def display_hierarchical_table(data: Any, table_format: str = "grid", max_width:
             # Add index column
             df_display.insert(0, 'Index', range(len(df_display)))
             
-            print(f"{prefix}└─ Table:")
+            print(colorize(f"{prefix}└─ Table:", Colors.BOLD, color_enabled))
             table_str = tabulate(df_display, headers='keys', tablefmt=table_format, showindex=False)
+            
+            # Colorize table if using plain/simple format
+            if color_enabled and table_format in ["plain", "simple"]:
+                table_str = colorize_table(table_str, color_enabled)
+            
             # Indent each line of the table
             for line in table_str.split('\n'):
                 print(f"{prefix}   {line}")
         else:
             # Simple array
-            print(f"{prefix}└─ Array ({len(data)} items)")
+            print(colorize(f"{prefix}└─ Array ({len(data)} items)", Colors.YELLOW, color_enabled))
             for i, item in enumerate(data):
                 is_last = i == len(data) - 1
                 connector = "└─" if is_last else "├─"
-                print(f"{prefix}   {connector} [{i}]: {item}")
+                print(colorize(f"{prefix}   {connector} [{i}]: ", Colors.CYAN, color_enabled) + 
+                      highlight_value(item, color_enabled))
     else:
-        print(f"{prefix}└─ {data}")
+        print(colorize(f"{prefix}└─ ", Colors.BOLD, color_enabled) + highlight_value(data, color_enabled))
 
-def display_hierarchical_json(data: Any, table_format: str = "grid", max_width: int = 100) -> None:
+def display_hierarchical_json(data: Any, table_format: str = "grid", max_width: int = 100, color_enabled: bool = True) -> None:
     """Display JSON data in a hierarchical format with proper table formatting."""
-    print("\nJSON Structure Display:")
-    print("=" * 60)
-    display_hierarchical_table(data, table_format, max_width)
-    print("=" * 60)
+    print(colorize("\nJSON Structure Display:", Colors.HEADER, color_enabled))
+    print(colorize("=" * 60, Colors.BOLD, color_enabled))
+    display_hierarchical_table(data, table_format, max_width, color_enabled=color_enabled)
+    print(colorize("=" * 60, Colors.BOLD, color_enabled))
 
 def save_to_csv(df: pd.DataFrame, output_path: str) -> None:
     """Save DataFrame to CSV file."""
@@ -163,26 +268,29 @@ def save_to_csv(df: pd.DataFrame, output_path: str) -> None:
     except Exception as e:
         print(f"Error saving to CSV: {e}")
 
-def analyze_structure(data: Any, indent: int = 0) -> None:
+def analyze_structure(data: Any, indent: int = 0, color_enabled: bool = True) -> None:
     """Analyze and display JSON structure."""
     prefix = "  " * indent
 
     if isinstance(data, dict):
-        print(f"{prefix}Object ({len(data)} keys):")
+        print(colorize(f"{prefix}Object ({len(data)} keys):", Colors.BOLD, color_enabled))
         for key, value in data.items():
-            print(f"{prefix}  - {key}: {type(value).__name__}")
+            print(colorize(f"{prefix}  - {key}: ", Colors.GREEN, color_enabled) + 
+                  colorize(f"{type(value).__name__}", Colors.CYAN, color_enabled))
             if isinstance(value, (dict, list)) and indent < 2:
-                analyze_structure(value, indent + 2)
+                analyze_structure(value, indent + 2, color_enabled)
     elif isinstance(data, list):
-        print(f"{prefix}Array ({len(data)} items):")
+        print(colorize(f"{prefix}Array ({len(data)} items):", Colors.YELLOW, color_enabled))
         if data:
             item_types = set(type(item).__name__ for item in data)
-            print(f"{prefix}  Item types: {', '.join(item_types)}")
+            print(colorize(f"{prefix}  Item types: ", Colors.BLUE, color_enabled) + 
+                  colorize(f"{', '.join(item_types)}", Colors.CYAN, color_enabled))
             if len(data) > 0 and isinstance(data[0], (dict, list)) and indent < 2:
-                print(f"{prefix}  Sample item structure:")
-                analyze_structure(data[0], indent + 2)
+                print(colorize(f"{prefix}  Sample item structure:", Colors.BOLD, color_enabled))
+                analyze_structure(data[0], indent + 2, color_enabled)
     else:
-        print(f"{prefix}Value: {type(data).__name__}")
+        print(colorize(f"{prefix}Value: ", Colors.BLUE, color_enabled) + 
+              colorize(f"{type(data).__name__}", Colors.CYAN, color_enabled))
 
 def main():
     parser = argparse.ArgumentParser(description="Convert JSON files to tabular format")
@@ -198,6 +306,10 @@ def main():
                        help="Output table in ASCII format")
     parser.add_argument("--hierarchical", action="store_true",
                        help="Display JSON in hierarchical format with nested tables")
+    parser.add_argument("--color", action="store_true",
+                       help="Enable colored output (default: auto-detect)")
+    parser.add_argument("--no-color", action="store_true",
+                       help="Disable colored output")
 
     args = parser.parse_args()
 
@@ -212,22 +324,30 @@ def main():
 
     # Show structure analysis if requested
     if args.structure:
-        print("\nJSON Structure Analysis:")
-        print("-" * 30)
-        analyze_structure(data)
+        print(colorize("\nJSON Structure Analysis:", Colors.HEADER, color_enabled))
+        print(colorize("-" * 30, Colors.BOLD, color_enabled))
+        analyze_structure(data, color_enabled=color_enabled)
         print()
 
     # Convert to DataFrame
     print("Converting to tabular format...")
     df = json_to_dataframe(data)
 
+    # Determine color setting
+    if args.color:
+        color_enabled = True
+    elif args.no_color:
+        color_enabled = False
+    else:
+        color_enabled = is_color_supported()  # Auto-detect
+    
     # Display table
     table_format = "plain" if args.ascii else args.format
     
     if args.hierarchical:
-        display_hierarchical_json(data, table_format, args.width)
+        display_hierarchical_json(data, table_format, args.width, color_enabled)
     else:
-        display_table(df, table_format, args.width)
+        display_table(df, table_format, args.width, color_enabled)
 
     # Show basic statistics
     print(f"\nDataFrame Info:")
@@ -293,15 +413,15 @@ def example_usage():
     df = json_to_dataframe(sample_data)
 
     # Display regular table
-    display_table(df, "grid", 30)
+    display_table(df, "grid", 30, color_enabled=True)
 
     # Show hierarchical display
     print("\nHierarchical Display:")
-    display_hierarchical_json(sample_data, "grid", 30)
+    display_hierarchical_json(sample_data, "grid", 30, color_enabled=True)
 
     # Show structure
     print("\nStructure Analysis:")
-    analyze_structure(sample_data)
+    analyze_structure(sample_data, color_enabled=True)
 
 if __name__ == "__main__":
     # Check if running with command line arguments
@@ -314,6 +434,8 @@ if __name__ == "__main__":
         print("  -f, --format       Table format (grid, plain, simple, github, fancy_grid)")
         print("  -a, --ascii        Output table in ASCII format")
         print("  --hierarchical     Display JSON in hierarchical format with nested tables")
+        print("  --color            Enable colored output")
+        print("  --no-color         Disable colored output")
         print("  -o, --output       Output CSV file path")
         print("  -w, --width        Maximum column width for display")
         print("  -s, --structure    Show JSON structure analysis")
