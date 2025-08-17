@@ -85,9 +85,29 @@ python json_converter.py data.json -s
 python json_converter.py data.json --hierarchical
 ```
 
+#### Hierarchical display with ASCII format
+```bash
+python json_converter.py data.json --hierarchical -a
+```
+
+#### Hierarchical display with custom width
+```bash
+python json_converter.py data.json --hierarchical -w 80
+```
+
+#### Hierarchical display with simple format
+```bash
+python json_converter.py data.json --hierarchical -f simple
+```
+
 #### Combine multiple options
 ```bash
 python json_converter.py data.json -a -w 80 -o output.csv -s
+```
+
+#### Hierarchical display with multiple options
+```bash
+python json_converter.py data.json --hierarchical -a -w 80 -o output.csv
 ```
 
 ## Table Formats
@@ -107,31 +127,60 @@ The converter handles various JSON structures:
 ### Simple Objects
 ```json
 {
-  "name": "John Doe",
-  "age": 30,
-  "city": "New York"
+  "Type": "IR",
+  "ReceiptKey": "0000001675",
+  "ReceiptDate": "11/18/2022 14:37:31"
 }
 ```
 
 ### Arrays of Objects
 ```json
 [
-  {"id": 1, "name": "Alice"},
-  {"id": 2, "name": "Bob"}
+  {
+    "QtyReceived": 10,
+    "StorerKey": "CUSTOMER",
+    "Sku": 9781292244860,
+    "ExternLineno": 202,
+    "ExternReceiptKey": "ASN-EXT-0001"
+  },
+  {
+    "QtyReceived": 15,
+    "StorerKey": "CUSTOMER",
+    "Sku": 9781292433103,
+    "ExternLineno": 203,
+    "ExternReceiptKey": "ASN-EXT-0001"
+  }
 ]
 ```
 
 ### Nested Structures
 ```json
 {
-  "user": {
-    "profile": {
-      "name": "John",
-      "details": {
-        "age": 30,
-        "location": "NYC"
-      }
+  "Type": "IR",
+  "WODetail": [
+    {
+      "QtyReceived": 10,
+      "StorerKey": "CUSTOMER",
+      "Sku": 9781292244860,
+      "ExternLineno": 202,
+      "ExternReceiptKey": "ASN-EXT-0001"
     }
+  ],
+  "POIR": {
+    "Susr2": 0,
+    "ReceiptKey": "0000001675",
+    "ReceiptDate": "11/18/2022 14:37:31",
+    "AsnDetail": [
+      {
+        "Status": "AVL",
+        "QtyReceived": 10,
+        "StorerKey": "CUSTOMER",
+        "ToLoc": "STAGE",
+        "Sku": 9781292244860,
+        "ExternLineno": 202,
+        "ExternReceiptKey": "WMS0000001675"
+      }
+    ]
   }
 }
 ```
@@ -139,9 +188,16 @@ The converter handles various JSON structures:
 ### Mixed Data Types
 ```json
 {
-  "numbers": [1, 2, 3],
-  "strings": ["a", "b", "c"],
-  "nested": {"key": "value"}
+  "Type": "IR",
+  "WODetail": [
+    {"QtyReceived": 10, "StorerKey": "CUSTOMER"},
+    {"QtyReceived": 15, "StorerKey": "CUSTOMER"}
+  ],
+  "POIR": {
+    "Susr2": 0,
+    "ReceiptKey": "0000001675",
+    "AsnDetail": []
+  }
 }
 ```
 
@@ -149,21 +205,21 @@ The converter handles various JSON structures:
 
 ### Grid Format (Default)
 ```
-Table (1 rows, 3 columns):
+Table (1 rows, 15 columns):
 ==================================================
-  name     age    city      
----------  -----  ----------
-  John Doe    30  New York  
+  Type  WODetail_0_QtyReceived  WODetail_0_StorerKey  WODetail_0_Sku  WODetail_0_ExternLineno  WODetail_0_ExternReceiptKey  WODetail_1_QtyReceived  WODetail_1_StorerKey  WODetail_1_Sku  WODetail_1_ExternLineno  WODetail_1_ExternReceiptKey  POIR_Susr2  POIR_ReceiptKey  POIR_ReceiptDate  POIR_AsnDetail_0_Status  POIR_AsnDetail_0_QtyReceived  POIR_AsnDetail_0_StorerKey  POIR_AsnDetail_0_ToLoc  POIR_AsnDetail_0_Susr1  POIR_AsnDetail_0_Susr2  POIR_AsnDetail_0_Susr3  POIR_AsnDetail_0_Sku  POIR_AsnDetail_0_ReturnType  POIR_AsnDetail_0_ExternLineno  POIR_AsnDetail_0_purchaseorderdocument  POIR_AsnDetail_0_ExternReceiptKey  POIR_AsnDetail_1_Status  POIR_AsnDetail_1_QtyReceived  POIR_AsnDetail_1_StorerKey  POIR_AsnDetail_1_ToLoc  POIR_AsnDetail_1_Susr1  POIR_AsnDetail_1_Susr2  POIR_AsnDetail_1_Susr3  POIR_AsnDetail_1_Sku  POIR_AsnDetail_1_ReturnType  POIR_AsnDetail_1_ExternLineno  POIR_AsnDetail_1_purchaseorderdocument  POIR_AsnDetail_1_ExternReceiptKey  POIR_ExternReceiptKey
+-----  ----------------------  --------------------  --------------  ----------------------  -------------------------  ----------------------  --------------------  --------------  ----------------------  -------------------------  -----------  ----------------  -----------------  -----------------------  -------------------------  -----------------------  -----------------  -----------------  -----------------  -----------------  --------------  ----------------------  -------------------------  -------------------------  -----------------------  -------------------------  -----------------------  -----------------  -----------------  -----------------  -----------------  --------------  ----------------------  -------------------------  -------------------------  -------------------------
+  IR                       10  CUSTOMER          9781292244860                     202  ASN-EXT-0001                          15  CUSTOMER          9781292433103                     203  ASN-EXT-0001                          0  0000001675        11/18/2022 14:37:31  AVL                             10  CUSTOMER           STAGE                        0                         AVL                             15  CUSTOMER           STAGE                        0                         ASN-EXT-0001
 ==================================================
 ```
 
 ### ASCII Format
 ```
-Table (1 rows, 3 columns):
+Table (1 rows, 15 columns):
 ==================================================
-| name     | age | city     |
-|----------|-----|----------|
-| John Doe | 30  | New York |
+| Type | WODetail_0_QtyReceived | WODetail_0_StorerKey | WODetail_0_Sku | WODetail_0_ExternLineno | WODetail_0_ExternReceiptKey | WODetail_1_QtyReceived | WODetail_1_StorerKey | WODetail_1_Sku | WODetail_1_ExternLineno | WODetail_1_ExternReceiptKey | POIR_Susr2 | POIR_ReceiptKey | POIR_ReceiptDate | POIR_AsnDetail_0_Status | POIR_AsnDetail_0_QtyReceived | POIR_AsnDetail_0_StorerKey | POIR_AsnDetail_0_ToLoc | POIR_AsnDetail_0_Susr1 | POIR_AsnDetail_0_Susr2 | POIR_AsnDetail_0_Susr3 | POIR_AsnDetail_0_Sku | POIR_AsnDetail_0_ReturnType | POIR_AsnDetail_0_ExternLineno | POIR_AsnDetail_0_purchaseorderdocument | POIR_AsnDetail_0_ExternReceiptKey | POIR_AsnDetail_1_Status | POIR_AsnDetail_1_QtyReceived | POIR_AsnDetail_1_StorerKey | POIR_AsnDetail_1_ToLoc | POIR_AsnDetail_1_Susr1 | POIR_AsnDetail_1_Susr2 | POIR_AsnDetail_1_Susr3 | POIR_AsnDetail_1_Sku | POIR_AsnDetail_1_ReturnType | POIR_AsnDetail_1_ExternLineno | POIR_AsnDetail_1_purchaseorderdocument | POIR_AsnDetail_1_ExternReceiptKey | POIR_ExternReceiptKey |
+|------|----------------------|---------------------|----------------|----------------------|---------------------------|----------------------|---------------------|----------------|----------------------|---------------------------|------------|----------------|-----------------|-----------------------|---------------------------|------------------------|-------------------|-------------------|-------------------|-------------------|----------------|------------------------|---------------------------|--------------------------------|---------------------------|-----------------------|---------------------------|------------------------|-------------------|-------------------|-------------------|-------------------|----------------|------------------------|---------------------------|--------------------------------|---------------------------|---------------------------|
+| IR   | 10                   | CUSTOMER         | 9781292244860  | 202                  | ASN-EXT-0001              | 15                   | CUSTOMER         | 9781292433103  | 203                  | ASN-EXT-0001              | 0          | 0000001675     | 11/18/2022 14:37:31 | AVL                     | 10                          | CUSTOMER           | STAGE             | 0                 |                   |                   | 9781292244860  |                        | 202                        |                                | WMS0000001675              | AVL                     | 15                          | CUSTOMER           | STAGE             | 0                 |                   |                   | 9781292433103  |                        | 203                        |                                | WMS0000001675              | ASN-EXT-0001              |
 ==================================================
 ```
 
@@ -178,8 +234,8 @@ JSON Structure Display:
    +-------+-------------+-------------+------------------+----------------+---------------------+
    | Index | QtyReceived | StorerKey   | Sku              | ExternLineno   | ExternReceiptKey    |
    +-------+-------------+-------------+------------------+----------------+---------------------+
-   |     0 |          10 | ML3PL-PP129 | 9781292244860    |            202 | ALRA20221111        |
-   |     1 |          15 | ML3PL-PP129 | 9781292433103    |            203 | ALRA20221111        |
+   |     0 |          10 | CUSTOMER | 9781292244860    |            202 | ASN-EXT-0001        |
+   |     1 |          15 | CUSTOMER | 9781292433103    |            203 | ASN-EXT-0001        |
    +-------+-------------+-------------+------------------+----------------+---------------------+
 └─ POIR: Object (4 keys)
    ├─ Susr2: 0
@@ -190,10 +246,36 @@ JSON Structure Display:
       +-------+--------+-------------+-------------+--------+-------+-------+-------+------------------+-------------+----------------+------------------------+---------------------+
       | Index | Status | QtyReceived | StorerKey   | ToLoc  | Susr1 | Susr2 | Susr3 | Sku              | ReturnType  | ExternLineno   | purchaseorderdocument | ExternReceiptKey    |
       +-------+--------+-------------+-------------+--------+-------+-------+-------+------------------+-------------+----------------+------------------------+---------------------+
-      |     0 | AVL    |          10 | ML3PL-PP129 | STAGE  |     0 |       |       | 9781292244860    |             |            202 |                       | WMS0000001675        |
-      |     1 | AVL    |          15 | ML3PL-PP129 | STAGE  |     0 |       |       | 9781292433103    |             |            203 |                       | WMS0000001675        |
+      |     0 | AVL    |          10 | CUSTOMER | STAGE  |     0 |       |       | 9781292244860    |             |            202 |                       | WMS0000001675        |
+      |     1 | AVL    |          15 | CUSTOMER | STAGE  |     0 |       |       | 9781292433103    |             |            203 |                       | WMS0000001675        |
       +-------+--------+-------------+-------------+--------+-------+-------+-------+------------------+-------------+----------------+------------------------+---------------------+
-   └─ ExternReceiptKey: ALRA20221111
+   └─ ExternReceiptKey: ASN-EXT-0001
+============================================================
+```
+
+### Hierarchical Format with ASCII
+```
+JSON Structure Display:
+============================================================
+┌─ Object (3 keys)
+├─ Type: IR
+├─ WODetail: Array (2 items)
+└─ Table:
+   | Index | QtyReceived | StorerKey   | Sku              | ExternLineno | ExternReceiptKey |
+   |-------|-------------|-------------|------------------|--------------|------------------|
+   | 0     | 10          | CUSTOMER | 9781292244860    | 202          | ASN-EXT-0001     |
+   | 1     | 15          | CUSTOMER | 9781292433103    | 203          | ASN-EXT-0001     |
+└─ POIR: Object (4 keys)
+   ├─ Susr2: 0
+   ├─ ReceiptKey: 0000001675
+   ├─ ReceiptDate: 11/18/2022 14:37:31
+   ├─ AsnDetail: Array (2 items)
+   └─ Table:
+      | Index | Status | QtyReceived | StorerKey   | ToLoc | Susr1 | Susr2 | Susr3 | Sku              | ReturnType | ExternLineno | purchaseorderdocument | ExternReceiptKey |
+      |-------|--------|-------------|-------------|-------|-------|-------|-------|------------------|------------|--------------|---------------------|------------------|
+      | 0     | AVL    | 10          | CUSTOMER | STAGE | 0     |       |       | 9781292244860    |            | 202          |                     | WMS0000001675    |
+      | 1     | AVL    | 15          | CUSTOMER | STAGE | 0     |       |       | 9781292433103    |            | 203          |                     | WMS0000001675    |
+   └─ ExternReceiptKey: ASN-EXT-0001
 ============================================================
 ```
 
@@ -251,7 +333,7 @@ json-to-table/
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the [GNU General Public License v3.0](LICENSE).
 
 ## Support
 

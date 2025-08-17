@@ -1,0 +1,55 @@
+{
+    "Type": "IR",
+    "WODetail": [
+      {
+        "QtyReceived": 10,
+        "StorerKey": "CUSTOMER",
+        "Sku": 9781292244860,
+        "ExternLineno": 202,
+        "ExternReceiptKey": "ASN-EXT-0001"
+      },
+      {
+        "QtyReceived": 15,
+        "StorerKey": "CUSTOMER",
+        "Sku": 9781292433103,
+        "ExternLineno": 203,
+        "ExternReceiptKey": "ASN-EXT-0001"
+      }
+    ],
+    "POIR": {
+      "Susr2": 0,
+      "ReceiptKey": "0000001675",
+      "ReceiptDate": "11/18/2022 14:37:31",
+      "AsnDetail": [
+        {
+          "Status": "AVL",
+          "QtyReceived": 10,
+          "StorerKey": "CUSTOMER",
+          "ToLoc": "STAGE",
+          "Susr1": 0,
+          "Susr2": "",
+          "Susr3": "",
+          "Sku": 9781292244860,
+          "ReturnType": "",
+          "ExternLineno": 202,
+          "purchaseorderdocument": "",
+          "ExternReceiptKey": "WMS0000001675"
+        },
+        {
+          "Status": "AVL",
+          "QtyReceived": 15,
+          "StorerKey": "CUSTOMER",
+          "ToLoc": "STAGE",
+          "Susr1": 0,
+          "Susr2": "",
+          "Susr3": "",
+          "Sku": 9781292433103,
+          "ReturnType": "",
+          "ExternLineno": 203,
+          "purchaseorderdocument": "",
+          "ExternReceiptKey": "WMS0000001675"
+        }
+      ],
+      "ExternReceiptKey": "ASN-EXT-0001"
+    }
+  }
