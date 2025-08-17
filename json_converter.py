@@ -249,17 +249,17 @@ def example_usage():
         "WODetail": [
             {
                 "QtyReceived": 10,
-                "StorerKey": "ML3PL-PP129",
+                "StorerKey": "CUSTOMER",
                 "Sku": "978129244860",
                 "ExternLineno": 202,
-                "ExternReceiptKey": "ALRA20221111"
+                "ExternReceiptKey": "ASN-EXT-0001"
             },
             {
                 "QtyReceived": 15,
-                "StorerKey": "ML3PL-PP129",
+                "StorerKey": "CUSTOMER",
                 "Sku": "978129243103",
                 "ExternLineno": 203,
-                "ExternReceiptKey": "ALRA20221111"
+                "ExternReceiptKey": "ASN-EXT-0001"
             }
         ],
         "POIR": {
@@ -270,7 +270,7 @@ def example_usage():
                 {
                     "Status": "AVL",
                     "QtyReceived": 10,
-                    "StorerKey": "ML3PL-PP129",
+                    "StorerKey": "CUSTOMER",
                     "ToLoc": "STAGE",
                     "Suer1": 0,
                     "Suer2": 0,
@@ -282,7 +282,7 @@ def example_usage():
                     "ExternReceiptKey": "WMS000001675"
                 }
             ],
-            "ExternReceiptKey": "ALRA20221111"
+            "ExternReceiptKey": "ASN-EXT-0001"
         }
     }
 
